@@ -1,5 +1,7 @@
 # v4-hook-economics
 
+[![two-way-proof](https://github.com/hunterinvariants/v4-hook-economics/actions/workflows/ci.yml/badge.svg)](https://github.com/hunterinvariants/v4-hook-economics/actions/workflows/ci.yml)
+
 An economic backtester for Uniswap v4 hooks. Existing hook tooling checks whether a hook is safe to
 run: callback access control, value conservation, swap liveness. This checks a different question those
 tools do not: whether a hook makes or loses money for the liquidity provider.

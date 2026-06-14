@@ -1,0 +1,26 @@
+name: two-way-proof
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      # The v4 stack is not committed (see .gitignore). Restore the exact versions used by the
+      # sibling public repo so the suite builds identically, plus pinned forge-std.
+      - name: Restore v4 dependencies
+        run: |
+          git clone --depth 1 --branch v1.16.1 https://github.com/foundry-rs/forge-std lib/forge-std
+          git clone --recursive --depth 1 https://github.com/hunterinvariants/v4-hook-invariants /tmp/vhi
+          cp -r /tmp/vhi/lib/uniswap-hooks lib/uniswap-hooks
+          cp -r /tmp/vhi/lib/hookmate lib/hookmate
+
+      - name: Run the two-way proof suite
+        run: forge test -vv
