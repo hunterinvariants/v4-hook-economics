@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
-"""Fetch real ETH/USD daily closes and generate test/RealPrices.sol (no fabrication).
+"""Fetch real daily closes for a Coinbase product and generate a Solidity price library (no fabrication).
 
-Primary source: Coinbase Exchange public candles (no key). Fallback: CoinGecko.
-Prices are written oldest -> newest, in USD scaled to WAD (1e18), as a pure Solidity
-library the economic backtest imports. Re-run any time to refresh the series.
+Usage:
+    python3 scripts/fetch_prices.py [PRODUCT] [OUTPATH] [LIBNAME]
+    python3 scripts/fetch_prices.py                                  # ETH-USD -> test/RealPrices.sol
+    python3 scripts/fetch_prices.py BTC-USD test/RealPricesBTC.sol RealPricesBTC
 """
 import urllib.request
 import json
+import sys
+
+PRODUCT = sys.argv[1] if len(sys.argv) > 1 else "ETH-USD"
+OUTPATH = sys.argv[2] if len(sys.argv) > 2 else "test/RealPrices.sol"
+LIBNAME = sys.argv[3] if len(sys.argv) > 3 else "RealPrices"
+
+_COINGECKO_ID = {"ETH-USD": "ethereum", "BTC-USD": "bitcoin"}
 
 
 def _get(url):
@@ -15,20 +23,20 @@ def _get(url):
 
 
 def fetch_coinbase():
-    # candle = [time, low, high, open, close, volume]; newest first
-    d = _get("https://api.exchange.coinbase.com/products/ETH-USD/candles?granularity=86400")
-    d.sort(key=lambda r: r[0])  # oldest -> newest
-    return [float(r[4]) for r in d], "Coinbase Exchange ETH-USD daily candles (granularity=86400)"
+    d = _get(f"https://api.exchange.coinbase.com/products/{PRODUCT}/candles?granularity=86400")
+    d.sort(key=lambda r: r[0])
+    return [float(r[4]) for r in d], f"Coinbase Exchange {PRODUCT} daily candles (granularity=86400)"
 
 
 def fetch_coingecko():
-    d = _get("https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=300")
-    return [float(p[1]) for p in d["prices"]], "CoinGecko ETH/USD market_chart (days=300, daily)"
+    coin = _COINGECKO_ID.get(PRODUCT, "ethereum")
+    d = _get(f"https://api.coingecko.com/api/v3/coins/{coin}/market_chart?vs_currency=usd&days=300")
+    return [float(p[1]) for p in d["prices"]], f"CoinGecko {coin} market_chart (days=300, daily)"
 
 
 try:
     closes, source = fetch_coinbase()
-except Exception as e:  # noqa: BLE001 - any network/parse failure -> fallback
+except Exception as e:  # noqa: BLE001
     print("coinbase failed:", e, "-> trying coingecko")
     closes, source = fetch_coingecko()
 
@@ -41,14 +49,14 @@ header = (
     "// Source: " + source + ".\n"
     "// " + str(n) + " daily closes, oldest to newest, USD scaled to WAD (1e18).\n"
     "pragma solidity ^0.8.24;\n\n"
-    "library RealPrices {\n"
+    "library " + LIBNAME + " {\n"
     "    function closesWad() internal pure returns (uint256[] memory p) {\n"
     "        p = new uint256[](" + str(n) + ");\n"
 )
 footer = "\n    }\n}\n"
 
-with open("test/RealPrices.sol", "w") as f:
+with open(OUTPATH, "w") as f:
     f.write(header + "\n".join(lines) + footer)
 
-print(f"wrote test/RealPrices.sol: {n} daily closes from {source}")
+print(f"wrote {OUTPATH} ({LIBNAME}): {n} daily closes from {source}")
 print(f"first={closes[0]:.2f} last={closes[-1]:.2f} min={min(closes):.2f} max={max(closes):.2f}")

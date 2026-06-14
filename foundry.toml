@@ -4,9 +4,10 @@ evm_version = "cancun"
 ffi = false
 fs_permissions = [{access = "read-write", path = ".forge-snapshots/"}]
 libs = ["lib"]
+optimizer = true
 out = "out"
 src = "src"
-via_ir = false
+via_ir = true
 
 [lint]
 exclude_lints = ["screaming-snake-case-immutable", "screaming-snake-case-const"]
