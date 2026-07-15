@@ -6,16 +6,12 @@ import {console2} from "forge-std/console2.sol";
 import {IFeePolicy, StaticFeePolicy, VolatilityFeePolicy} from "../src/EconHarness.sol";
 import {FlowEngine} from "../src/FlowEngine.sol";
 
-/// @notice M2 prototype -- volume replay with retail flow. Price-only analysis makes "more aggressive"
-///         look better because it cuts more LVR. Routing uninformed retail flow alongside the
-///         arbitrageur exposes the catch: a fee tuned too aggressively chokes off the retail volume LPs
-///         earn on, so it is worse for LPs despite cutting the most LVR.
 contract FlowReplayTest is Test {
     uint256 constant X0 = 100e18;
     uint256 constant Y0 = 200_000e18;
-    uint256 constant BASE = 0.003e18; // 0.30%
-    uint256 constant CHOKE = 0.05e18; // retail volume reaches zero at a 5% fee
-    uint256 constant RETAIL = 150_000e18; // retail quote volume per step at the base fee
+    uint256 constant BASE = 0.003e18;
+    uint256 constant CHOKE = 0.05e18;
+    uint256 constant RETAIL = 150_000e18;
 
     StaticFeePolicy stat;
     VolatilityFeePolicy moderate;
@@ -23,8 +19,8 @@ contract FlowReplayTest is Test {
 
     function setUp() public {
         stat = new StaticFeePolicy(BASE);
-        moderate = new VolatilityFeePolicy(BASE, 0.02e18, 0.30e18); // caps at 2%, below the choke
-        aggressive = new VolatilityFeePolicy(BASE, 0.08e18, 0.60e18); // caps at 8%, above the choke
+        moderate = new VolatilityFeePolicy(BASE, 0.02e18, 0.30e18);
+        aggressive = new VolatilityFeePolicy(BASE, 0.08e18, 0.60e18);
     }
 
     function _volatile() internal pure returns (uint256[] memory p) {
@@ -39,12 +35,11 @@ contract FlowReplayTest is Test {
     }
 
     function _log(string memory tag, FlowEngine.FlowScorecard memory s) internal pure {
-        console2.log("--", tag);
-        console2.log("   netPnL:");
-        console2.logInt(s.netPnL);
-        console2.log("   arbFee   :", s.arbFee);
-        console2.log("   retailFee:", s.retailFee);
-        console2.log("   lvr      :", s.lvr);
+        console2.log(tag);
+        console2.log("   LP net PnL (quote):");
+        console2.logInt(s.netPnL / int256(1e18));
+        console2.log("   retail fees (quote):", s.retailFee / 1e18);
+        console2.log("   arb loss / LVR (quote):", s.lvr / 1e18);
     }
 
     function test_flow_aggressiveFeeKillsRetail() public view {

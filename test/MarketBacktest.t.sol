@@ -26,18 +26,18 @@ contract MarketBacktestTest is Test {
         EconLib.Scorecard memory s = EconLib.run(x0, y0, path, stat);
         EconLib.Scorecard memory r = EconLib.run(x0, y0, path, real);
 
-        console2.log("==", tag);
-        console2.log("   days        :", path.length);
-        console2.log("   static  netPnL:");
-        console2.logInt(s.netPnL);
-        console2.log("   realhook netPnL:");
-        console2.logInt(r.netPnL);
+        console2.log(tag);
+        console2.log("   days:", path.length);
+        console2.log("   static 0.30% fee, LP PnL (quote units):");
+        console2.logInt(s.netPnL / int256(1e18));
+        console2.log("   volatility hook,  LP PnL (quote units):");
+        console2.logInt(r.netPnL / int256(1e18));
 
         if (s.netPnL < 0) {
             int256 saved = r.netPnL - s.netPnL;
             if (saved > 0) {
-                uint256 savedBps = uint256(saved) * 10_000 / uint256(-s.netPnL);
-                console2.log("   LP-loss reduction vs static (bps):", savedBps);
+                uint256 pct = (uint256(saved) * 100 + uint256(-s.netPnL) / 2) / uint256(-s.netPnL);
+                console2.log("   LP loss reduced by (%):", pct);
             }
         }
 
